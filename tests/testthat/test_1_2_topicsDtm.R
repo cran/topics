@@ -10,31 +10,36 @@ options(mc.cores = 1)
 test_that("topicsDtm creates a DTM correctly with default parameters", {
 
   testthat::skip_on_cran()
-  save_dir_temp <- tempdir()
 
-  result <- topics::topicsDtm(
+  dtm_result <- topics::topicsDtm(
     data =  dep_wor_data$Deptext, 
-    save_dir = save_dir_temp)
+    ngram_window = c(1,1), 
+    removal_mode = "frequency",
+    removal_rate_most = 30,
+    removal_rate_least = 25
+    )
   
-  testthat::expect_true(is.list(result))
-  testthat::expect_true("train_dtm" %in% names(result))
-  testthat::expect_true("test_dtm" %in% names(result))
-  testthat::expect_true("train_data" %in% names(result))
-  testthat::expect_true("test_data" %in% names(result))
-  testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
+  testthat::expect_true(is.list(dtm_result))
+  testthat::expect_true("train_dtm" %in% names(dtm_result))
+  #testthat::expect_true("test_dtm" %in% names(dtm_result))
+  #testthat::expect_true("train_data" %in% names(dtm_result))
+  #testthat::expect_true("test_data" %in% names(dtm_result))
+  testthat::expect_s4_class(dtm_result$train_dtm, "dgCMatrix")
+  
+  # Testing with less than 30 words
+  dtmeval <- topicsDtmEval(dtm_result)
+  dtmeval$frequency_plot
 
 })
 
 test_that("topicsDtm handles different ngram_window values", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempdir()
   
   result <- topics::topicsDtm(
     data = dep_wor_data$Deptext, 
     ngram_window = c(1, 2), 
-    threads=1, 
-    save_dir = save_dir_temp)
+    threads = 1)
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
@@ -44,12 +49,10 @@ test_that("topicsDtm handles different ngram_window values", {
 test_that("topicsDtm removes a specified word", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempdir()
   
   result <- topics::topicsDtm(
     data = dep_wor_data$Deptext, 
-    removalword = "test", 
-    save_dir =   save_dir_temp)
+    removalword = "test")
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
@@ -60,12 +63,10 @@ test_that("topicsDtm removes a specified word", {
 test_that("topicsDtm handles different occurrence rates", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempdir()
   
   result <-topics:: topicsDtm(
     data = dep_wor_data$Deptext,
-    occ_rate = 1, 
-    save_dir =   save_dir_temp)
+    occurance_rate = 1)
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
@@ -75,12 +76,10 @@ test_that("topicsDtm handles different occurrence rates", {
 test_that("topicsDtm handles different removal modes", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempdir()
  
   result <- topics::topicsDtm(
     data = dep_wor_data$Deptext, 
-    removal_mode = "absolute", 
-    save_dir = save_dir_temp)
+    removal_mode = "absolute")
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
@@ -90,12 +89,9 @@ test_that("topicsDtm handles different removal modes", {
 test_that("topicsDtm handles different split proportions", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempdir()
   
   result <- topics::topicsDtm(
-    data = dep_wor_data$Deptext, 
-    split = 0.5, 
-    save_dir = save_dir_temp)
+    data = dep_wor_data$Deptext)
   
   testthat::expect_true(is.list(result))
 #  testthat::expect_true(nrow(result$train_data) <= nrow(data)*0.5)
@@ -124,48 +120,16 @@ test_that("topicsDtm handles different split proportions", {
 #  
 #})
 
-test_that("topicsDtm saves results to the specified directory", {
-  
-  testthat::skip_on_cran()
-  
-  save_dir <- tempfile()
-  
-  result <- topics::topicsDtm(
-    data = dep_wor_data$Deptext, 
-    save_dir = save_dir)
-  
-  testthat::expect_true(file.exists(file.path(save_dir, "seed_42", "dtms.rds")))
-  
-})
 
-test_that("topicsDtm loads results from the specified directory", {
-  
-  testthat::skip_on_cran()
-  
-  save_dir_temp <- tempfile()
-  
-  result1 <- topics::topicsDtm(
-    data = dep_wor_data$Deptext, 
-    save_dir = save_dir_temp)
-  
-  result2 <- topics::topicsDtm(
-    load_dir = save_dir_temp, 
-    save_dir = NULL)
-  
-  testthat::expect_equal(result1$train_dtm, result2$train_dtm)
-
-})
 
 test_that("topicsDtm removes least frequent words based on a threshold", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempfile()
   
   result <- topics::topicsDtm(
     data = dep_wor_data$Deptext, 
     removal_mode = "frequency", 
-    removal_rate_least = 2, 
-    save_dir = save_dir_temp)
+    removal_rate_least = 2)
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
@@ -175,13 +139,11 @@ test_that("topicsDtm removes least frequent words based on a threshold", {
 test_that("topicsDtm removes most frequent words based on a threshold", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempfile()
   
   result <- topics::topicsDtm(
     data = dep_wor_data$Deptext, 
     removal_mode = "frequency", 
-    removal_rate_most = 50, 
-    save_dir = save_dir_temp)
+    removal_rate_most = 50)
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
@@ -200,15 +162,39 @@ test_that("topicsDtm removes most frequent words based on a threshold", {
 test_that("topicsDtm removes most frequent words in percent mode", {
   
   testthat::skip_on_cran()
-  save_dir_temp <- tempfile()
   
   result <- topics::topicsDtm(
     data = dep_wor_data$Deptext[1:20], 
     removal_mode = "percentage", 
-    removal_rate_most = 5, 
-    save_dir = save_dir_temp)
+    removal_rate_most = 5)
   
   testthat::expect_true(is.list(result))
   testthat::expect_s4_class(result$train_dtm, "dgCMatrix")
   
 })
+
+
+test_that("topicsDtm PMI thresholhd ", {
+  
+  testthat::skip_on_cran()
+  
+  result_pmi0 <- topics::topicsDtm(
+    data = dep_wor_data$Deptext,
+    pmi_threshold = NULL)
+  
+  result_pmi1 <- topics::topicsDtm(
+    data = dep_wor_data$Deptext,
+    pmi_threshold = 1)
+  
+  # Check the n-grams arranged according to pmi
+  result_pmi1$n_grams_pmi %>% 
+    arrange(desc(pmi_value))
+  
+  result_pmi1$n_grams_pmi %>% 
+    arrange(-desc(pmi_value))
+  
+  testthat::expect_true(ncol(result_pmi1$train_dtm) == 21692)
+  
+})
+
+

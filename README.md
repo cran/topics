@@ -5,25 +5,38 @@
 [![DOI](https://zenodo.org/badge/785738351.svg)](https://zenodo.org/doi/10.5281/zenodo.11165377)
 [![Github build
 status](https://github.com/theharmonylab/topics/workflows/R-CMD-check/badge.svg)](https://github.com/theharmonylab/topics/actions)
-[![Project Status: Active – The project has reached a stable, usable
-state and is being actively
-developed](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+[![Project Status:
+Active](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html#maturing-1)
 [![codecov](https://codecov.io/gh/theharmonylab/topics/graph/badge.svg?token=7ZTWBNIVCX)](https://app.codecov.io/gh/theharmonylab/topics/)
-<!-- 
-
-[![CRAN  Downloads](https://cranlogs.r-pkg.org/badges/grand-total/text)](https://CRAN.R-project.org/package=text)
-
+[![CRAN
+Downloads](https://cranlogs.r-pkg.org/badges/grand-total/topics)](https://CRAN.R-project.org/package=topics)
 <!-- badges: end -->
 
-# Topics
+# topics <a href="https://r-topics.org"><img src="man/figures/logo.png" align="right" height="138" alt="topics website" /></a>
 
-`topics` is an R-package enabling Differential Language Analysis using
-topics. It can produce LDA topics, but also support the text-package
-(www.r-text.org) in analyzing BERTtopics.
+## Overview
 
-When using this package, please cite:
+An R-package for analyzing natural language implementing Differential
+Language Analysis using words, phrases and topics. The `topics` package
+is part of the *R Language Analysis Suite*, including `talk`, `text` and
+`topics`.
+
+- [`talk`](https://www.r-talk.org/) transforms voice recordings into
+  text, audio features, or embeddings.<br> <br>
+- [`text`](https://www.r-text.org/) provides many language tasks such as
+  converting digital text into word embeddings.<br> <br> `talk` and
+  `text` offer access to Large Language Models from Hugging Face.<br>
+  <br>
+- [`topics`](https://www.r-topics.org/) visualizes language patterns
+  into words, phrases or topics to generate psychological insights. <br>
+  The `topics` package supports the `text` package in analysing and
+  visualizing topics from BERTtopics.<br> <br>
+
+<img src="man/figures/talk_text_topics.svg" style="width:50.0%" />
+
+<br> When using the `topics` package, please cite:
 
 Ackermann L., Zhuojun G. & Kjell O.N.E. (2024). An R-package for
 visualizing text in topics. <https://github.com/theharmonylab/topics>.
@@ -75,56 +88,10 @@ p-value for multiple comparisons.
 **5. Visualization**<br> The visualization step creates wordclouds of
 the significant topics found by the statistical analysis.
 
-## Usage
+<img src="man/figures/one_dim.png" style="width:75.0%"
+alt="One-dimensional plots based on words and phrases (top) and LDA topics (bottom)." />
+<br> <br> <br>
 
-In an example where the topics are used to predict the PHQ-9 score, the
-pipeline can be run as follows:
-
-**1. Data Preprocessing**<br> To preprocess the data, run the following
-command:
-
-``` r
-data <- read.csv("data.csv")
-dtm <- topicsDtm(data = data$text)
-
-# Check the results from the dtm and refine stopwords and removal rates if necessary
-topicsDtmEval(dtm)
-```
-
-**2. Model Training**<br> To train the LDA model, run the following
-command:
-
-``` r
-model <- topicsModel(dtm = dtm,
-                  num_topics = 20,
-                  num_iterations = 1000)
-                  
-```
-
-**3. Model Inference**<br> To infer the topic term distribution of the
-documents, run the following command:
-
-``` r
-preds <- topicsPreds(model = model,
-                    data = data$text)
-```
-
-**4. Statistical Analysis**<br> To analyze the relationship between the
-topics and the prediction variable, run the following command:
-
-``` r
-test <- topicsTest(model = model,
-                  data = data,
-                  preds = preds,
-                  pred_var = "phq9",
-                  control_vars = c("age",..),
-                  test_method = "linear_regression")
-```
-
-**5. Visualization**<br> To visualize the significant topics as
-wordclouds, run the following command:
-
-``` r
-topicsPlots(model = model,
-            test = test)
-```
+<img src="man/figures/two_dim.png" style="width:75.0%"
+alt="A two-dimensional plot showing topics related to depression versus worry responses (x-axis) and low versus high depression severity (y-axis)." />
+<br> <br>
