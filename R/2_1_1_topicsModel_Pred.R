@@ -1,4 +1,5 @@
 
+
 #' get_mallet_model
 #' @param dtm (R_obj) A document-term matrix
 #' @param num_topics (integer) The number of topics
@@ -307,6 +308,7 @@ topicsModel <- function(
     seed = 42){
   
   set.seed(seed)
+  
   dtm_settings <- dtm$settings
   dtm <- dtm$train_dtm
   
@@ -336,25 +338,7 @@ topicsModel <- function(
     stringsAsFactors = FALSE)
   model$summary[order(model$summary$prevalence, decreasing = TRUE) , ][ 1:10 , ]
   
-#  if (!is.null(save_dir)){
-#    if (!dir.exists(save_dir)) {
-#      # Create the directory
-#      dir.create(save_dir)
-#      
-#      msg <- "Directory created successfully.\n"
-#      message(
-#        colourise(msg, "green"))
-#      
-#    }
-#    
-#    if(!dir.exists(paste0(save_dir, "/seed_", seed))){
-#      dir.create(paste0(save_dir, "/seed_", seed))
-#    }
-#    
-#    msg <- paste0("The Model is saved in", save_dir,"/seed_", seed,"/model.rds")
-#    message(colourise(msg, "green"))
-#    saveRDS(model, paste0(save_dir, "/seed_", seed, "/model.rds"))
-#  }
+  model$model_type <- "mallet"
   
   return(model)
 }
@@ -415,8 +399,6 @@ topicsPreds <- function(
     ){
   
   set.seed(seed)
-  
-
     
     if (length(data) == 0){
       msg <- "The data provided is empty. Please provide a list of text data."
@@ -449,22 +431,6 @@ topicsPreds <- function(
         verbose = FALSE
       )
       
-     # new_dtm <- topicsDtm(
-     #   data = data,
-     #   ngram_window = model$dtm_settings$ngram_window,
-     #   stopwords = model$dtm_settings$stopwords,
-     #   removalword = model$dtm_settings$removalword,
-     #   pmi_threshold = model$dtm_settings$pmi_threshold,
-     #   occurance_rate = model$dtm_settings$occurance_rate,
-     #   removal_mode = model$dtm_settings$removal_mode,
-     #   removal_rate_most = model$dtm_settings$removal_rate_most,
-     #   removal_rate_least = model$dtm_settings$removal_rate_least,
-     #   shuffle = model$dtm_settings$shuffle,
-     #   seed = model$dtm_settings$seed,
-     #   save_dir = save_dir,
-     #   load_dir = load_dir,
-     #   threads = model$dtm_settings$threads
-     # )
       # Align new DTM with model vocabulary
       model_vocab <- model$vocabulary
       new_vocab <- colnames(new_dtm$train_dtm)
@@ -519,25 +485,6 @@ topicsPreds <- function(
     preds <- tibble::as_tibble(preds, .name_repair = "minimal")
     colnames(preds) <- paste("t_", 1:ncol(preds), sep="")
     preds <- preds %>% tibble::tibble()
-    
-#  }
-  
-  #if (!is.null(save_dir)){
-  #  if (!dir.exists(save_dir)) {
-  #    dir.create(save_dir)
-  #    
-  #    msg <- "Directory created successfully.\n"
-  #    message(
-  #      colourise(msg, "green"))
-  #    
-  #  } 
-  #  if(!dir.exists(paste0(save_dir, "/seed_", seed))){
-  #    dir.create(paste0(save_dir, "/seed_", seed))
-  #  }
-  #  msg <- paste0("Predictions are saved in", save_dir,"/seed_", seed,"/preds.rds")
-  #  message(colourise(msg, "green"))
-  #  saveRDS(preds, paste0(save_dir, "/seed_", seed, "/preds.rds"))
-  #}
   
   return(preds)
 }

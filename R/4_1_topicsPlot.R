@@ -1,6 +1,6 @@
 
 
-#'  Plot a distribution plot
+#'  Plot a distribution plot (available for the text-package)
 #'  
 #' @param bivariate_color_codes A vector of color codes specifying colors for 
 #' different categories in the scatter plot. 
@@ -23,11 +23,15 @@
 #' @param scatter_bg_dot_size Size of the dots for background topics in the scatter legend. Default: 9.
 #' @param scatter_legend_dots_alpha The transparency of the dots
 #' @param scatter_legend_bg_dots_alpha The transparency of the dots
+#' @param scatter_legend_circles Plot concentric circles for the scatter legend
+#' @param scatter_legend_circles_radius Radius of first concentric circle
+#' @param scatter_legend_circles_num Number of Concentric circles
 #' @param width Width of the saved scatter plot in inches. Default: 10.
 #' @param height Height of the saved scatter plot in inches. Default: 8.
 #' @param seed Seed for reproducibility, ensuring consistent plot generation. Default: 42.
-#' @importFrom ggplot2 ggplot geom_point scale_color_manual labs theme_minimal theme element_blank
+#' @importFrom ggplot2 ggplot geom_point scale_color_manual labs theme_minimal theme element_blank geom_hline geom_vline
 #' @importFrom rlang sym !!
+#' @importFrom ggforce geom_circle
 #' @importFrom dplyr pull select filter mutate anti_join summarise pull group_by group_modify ungroup
 #' @export
 topicsScatterLegend <- function(
@@ -48,6 +52,9 @@ topicsScatterLegend <- function(
     scatter_bg_dot_size = c(1, 5),
     scatter_legend_dots_alpha = 0.8,
     scatter_legend_bg_dots_alpha = 0.2, 
+    scatter_legend_circles = FALSE,
+    scatter_legend_circles_radius = 0,
+    scatter_legend_circles_num = 4,
     width = 10, 
     height = 8, 
     seed = 42
@@ -77,12 +84,14 @@ topicsScatterLegend <- function(
     # Only non-significant topics. Generating scatter legend.
   } else if (only_two && y_axes_1 == 1) {
     popout <- filtered_test %>% dplyr::filter(color_categories %in% 1:3)
-    backgr_dots <- tibble::tibble() # No background dots
+    backgr_dots <- tibble::tibble(data.frame(matrix(0,nrow=1,ncol=ncol(popout)))) # No background dots
+    names(backgr_dots) <- names(popout)# No background dots
     
     # Only significant topics. Generating scatter plot.\n
   } else if (only_five && y_axes_1 == 2) {
     popout <- filtered_test
-    backgr_dots <- tibble::tibble() # No background dots
+    backgr_dots <- tibble::tibble(data.frame(matrix(0,nrow=1,ncol=ncol(popout)))) # No background dots
+    names(backgr_dots) <- names(popout) # No background dots
     
     # Generating scatter plot based on specified popout criteria.\n
   } else {
@@ -97,6 +106,10 @@ topicsScatterLegend <- function(
     
     # Perform anti_join
     backgr_dots <- filtered_test %>% dplyr::anti_join(popout, by = colnames(filtered_test))
+    if (nrow(backgr_dots) == 0){
+      backgr_dots <- tibble::tibble(data.frame(matrix(0,nrow=1,ncol=ncol(popout)))) # No background dots
+      names(backgr_dots) <- names(popout) # No background dots
+    }
   }
  
 #  if (scatter_popout_dot_size == "prevalence"){
@@ -150,7 +163,10 @@ topicsScatterLegend <- function(
     scatter_legend_dots_alpha = scatter_legend_dots_alpha,
     scatter_legend_bg_dots_alpha = scatter_legend_bg_dots_alpha,
     allow_topic_num_legend = allow_topic_num_legend, 
-    scatter_show_axis_values = scatter_show_axis_values
+    scatter_show_axis_values = scatter_show_axis_values,
+    scatter_legend_circles = scatter_legend_circles,
+    scatter_legend_circles_radius = scatter_legend_circles_radius,
+    scatter_legend_circles_num = scatter_legend_circles_num
   )
   
   # Save the plot
@@ -279,28 +295,28 @@ determine_popout_topics <- function(
   # Determine which color category should use the min-based selection:
   # - For a 9-element vector, the popout category is "5".
   # - For a 3-element vector, the popout category is "2".
-  popout_category <- if (length(num_popout) == 9) "5" else "2"
+  num1 <- max(as.numeric(filtered_test$color_categories))
+  popout_category <- if (length(num_popout) == 9 && num1 == 9) "5" else "2"
   
   # Process each category using group_modify:
-  filtered_test %>%
-    dplyr::filter(color_categories %in% names(valid_map)) %>%
-    dplyr::group_by(color_categories) %>%
+  filtered_test %>% 
+    dplyr::filter(color_categories %in% names(valid_map)) %>% 
+    dplyr::group_by(color_categories) %>% 
     dplyr::group_modify(~ {
       category <- .y$color_categories
-      n_pop <- valid_map[[category]]
-      if (n_pop > 0) {
-        if (category == popout_category) {
-          # For the designated popout group (only category "5" or "2"), use min-based selection.
-          select_rows_min(.x, n_pop)
-        } else {
-          # For all other groups, use the existing max-based selection.
-          select_rows(.x, n_pop)
-        }
+      n_pop    <- valid_map[[category]]
+      
+      if (n_pop <= 0) return(.x[0, ])
+      
+      if (category == popout_category) {
+        select_rows_min(.x, n_pop)
       } else {
-        .x[0, ]  # Return an empty tibble for groups with 0 in the mapping.
+        select_rows(.x, n_pop)
       }
-    }) %>%
-    dplyr::ungroup()
+    }) %>% 
+    dplyr::ungroup() %>% 
+   dplyr::select(-color_categories, color_categories)
+
 }
 
 #' @param popout A data frame containing the data points to be highlighted ("pop-out") in the scatter plot.
@@ -320,6 +336,9 @@ determine_popout_topics <- function(
 #' @param scatter_legend_dots_alpha The transparency of the dots
 #' @param allow_topic_num_legend Logical; if TRUE, adds topic numbers as text labels to the pop-out points. Default: FALSE.
 #' @param scatter_show_axis_values Show the values on the axises. 
+#' @param scatter_legend_circles Plot concentric circles for the scatter legend
+#' @param scatter_legend_circles_radius Radius of first concentric circle
+#' @param scatter_legend_circles_num Number of Concentric circles
 #' @noRd
 generate_scatter_plot <- function(
     popout,
@@ -335,7 +354,10 @@ generate_scatter_plot <- function(
     scatter_legend_dots_alpha = 0.8, 
     scatter_legend_bg_dots_alpha = 0.2,
     allow_topic_num_legend, 
-    scatter_show_axis_values
+    scatter_show_axis_values,
+    scatter_legend_circles = FALSE,
+    scatter_legend_circles_radius = 0,
+    scatter_legend_circles_num = 4
 ) {
   
   # Define aesthetics for popout and background points
@@ -404,7 +426,7 @@ generate_scatter_plot <- function(
       axis.ticks = if (scatter_show_axis_values) ggplot2::element_line() else ggplot2::element_blank(),
       legend.position = "none"
     )
-  
+
   
   # Add topic numbers if enabled
   if (allow_topic_num_legend) {
@@ -485,12 +507,33 @@ generate_scatter_plot <- function(
       )
   }
   
+  #Add concentric circles 2 dimensional scatter legend plots
+  if(!is.null(y_col) && scatter_legend_circles){
+
+    if(scatter_legend_circles_radius == 0) {
+     radius <- interval/2 
+    } 
+    else {
+     radius <- scatter_legend_circles_radius
+    }
+
+    x0 <- y0 <- r <- NULL
+    circles <- data.frame(
+      x0 = 0,
+      y0 = 0,
+      r = seq(radius,  by=radius, length.out = scatter_legend_circles_num)
+    )
+    plot <- plot  + ggplot2::geom_hline(yintercept = 0, size = 0.2, color = "#787373") + ggplot2::geom_vline(xintercept = 0, size = 0.2, color = "#787373")
+    plot <- plot + ggforce::geom_circle(aes(x0 = x0, y0 = y0, r = r), linetype = 2, data = circles, linewidth = 0.2, color = "#787373")
+  }
+
   plot <- plot + ggplot2::coord_cartesian(clip = "off") # Prevent clipping
   
   return(plot)
 }
 
 #### topicsGridLegend ####
+#'  Plot a grid (matrix) legend (available for the text-package)
 #' @param bivariate_color_codes A vector of color codes specifying the colors for the 3x3 grid legend.
 #'                              Default: c("#398CF9", "#60A1F7", "#5dc688", "#e07f6a", "#EAEAEA", "#40DD52", "#FF0000", "#EA7467", "#85DB8E").
 #' @param filtered_test A data frame containing the filtered topic data. Must include a `color_categories` column.
@@ -512,7 +555,7 @@ generate_scatter_plot <- function(
 #' @importFrom tidyr gather separate
 #' @importFrom dplyr mutate
 #' @importFrom ggplot2 geom_tile ggtitle scale_fill_identity labs theme_void annotate theme element_text coord_fixed ggsave
-#' @noRd
+#' @export
 topicsGridLegend <- function(
     bivariate_color_codes = c(
       "#398CF9", "#60A1F7", "#5dc688",
@@ -703,9 +746,8 @@ topicsGridLegend <- function(
 #' @param scatter_legend_bg_dots_alpha The transparency of the dots
 #' @param plot_topics_idx (vector) The topics to plot determined by index
 #' @param p_alpha (integer) The p-value threshold to use for significance
-#' @param highlight_topic_words (named vector) The dictionary to popout negative words to an individual plot for easier reading. 
-#'  Default words are "not", "never". Words are as vector names. 
-#'  The values of the vector determine the color code to popout. The color values can be different for different words.
+#' @param highlight_topic_words (str vector) The dictionary to popout negative words to an individual plot for easier reading. 
+#'  Default words are "not", "never". Individual words are elements in the vector. 
 #' @param save_dir (string) The directory to save the wordclouds
 #' @param figure_format (string) Set the figure format, e.g., svg, or png.
 #' @param width (integer) The width of the topic (units = "in"). 
@@ -727,8 +769,8 @@ topicsPlot1 <- function(
     scatter_legend_bg_dots_alpha, 
     plot_topics_idx = NULL,
     p_alpha = 0.05,
-    highlight_topic_words = c(not = "#2d00ff", never = "#2d00ff"),    
-    save_dir,
+    highlight_topic_words = c("not", "never"),    
+    save_dir = NULL,
     figure_format = "svg",
     width = 10, 
     height = 8,
@@ -739,8 +781,8 @@ topicsPlot1 <- function(
 
   if (!is.null(model)){
     
-    # if model$model_type == "bert_topic" (i.e., a maller model return null on model$model_type)
-    if (!is.null(model$model_type)) {
+    
+    if (model$model_type == "bert_topic") {
       
       if(!is.null(test)){
         num_topics <- nrow(test$test)
@@ -753,10 +795,13 @@ topicsPlot1 <- function(
         stop("There are no significant topics to plot.")
       }
       
-      df_list <- create_df_list_bert_topics(
-        save_dir, 
-        seed, 
-        num_topics)
+      if(model$model_type == "bert_topic"){
+        df_list <- create_df_list_bert_topics(df = model$model)
+        summary = model$model$summary
+        cor_var = test$x_y_axis
+        test_type = test$test_method
+        test = test$test
+      }
       
     } else {
       # if from mallet: 
@@ -766,7 +811,7 @@ topicsPlot1 <- function(
     }
   }
   
-  if (!is.null(test) && !is.null(model)){
+  if (!is.null(test) && !is.null(model) && !model$model_type == "bert_topic"){
     summary = model$summary
     cor_var = test$x_y_axis
     test_type = test$test_method
@@ -991,7 +1036,7 @@ clean_characters_for_plotting_test <- function(test) {
 #' see also "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr").
 #' @param ngrams_max (integer) The maximum number of n-grams to plot.
 #' @param ngram_select (character) Method to select ngrams_max, when using both ngram and test use "prevalence" or "estimate"; 
-#' if you only use ngrams use "pmi", "frequency", or "proportion". 
+#' if you only use ngrams use "pmi", "frequency", or "prevalence". 
 #' @param color_scheme (string 'default' or vector) The color scheme.
 #'  
 #' For plots not including a test, the color_scheme should in clude 2 colours (1 gradient pair), such as:
@@ -1040,9 +1085,7 @@ clean_characters_for_plotting_test <- function(test) {
 #'   "lightgray", "#85DB8E")     # quadrant 9 (bottom right corner).
 #'
 #' 
-#' @param highlight_topic_words (named vector) Words to highlight in topics (e.g., negative words). 
-#'  The values of the vector determine the color: highlight_topic_words = c(not = "#2d00ff", never = "#2d00ff"); note that it needs
-#'  to be hexa codes, so color naming such as "blue" does not work. The default value is NULL.
+#' @param highlight_topic_words (str vector) Words to highlight in topics (e.g., negative words). Format: highlight_topic_words = c("not", "never"). The default value is NULL.
 #' @param allowed_word_overlap (numeric) A filter function determining the maximum number of identical words in the topics to be plotted. 
 #' This filter removes topics within each "color group" and also include removing topics from the distribution and grid legends; 
 #' (Note that the adjustment for multiple comparison is taking place before these are removed; i.e., the adjusted p-values are not affected by this filter).   
@@ -1064,6 +1107,9 @@ clean_characters_for_plotting_test <- function(test) {
 #' @param scatter_legend_bg_dots_alpha (numeric) The transparency alphe level of the background dots.
 #' @param scatter_legend_method (string) The method to filter topics to be emphasized in the scatter legend; either "mean", "max_x", or "max_y".
 #' @param scatter_legend_specified_topics (vector) Specify which topic(s) to emphasize in the scatter legend. 
+#' @param scatter_legend_circles Plot concentric circles for the scatter legend
+#' @param scatter_legend_circles_radius Radius of first concentric circle
+#' @param scatter_legend_circles_num Number of Concentric circles
 #' For example, c("t_1", "t_2"). If set, scatter_legend_method will have no effect.
 #' @param scatter_legend_topic_n (boolean) If TRUE, the topic numbers are shown in the scatter legend.
 #' @param scatter_show_axis_values (boolean) If TRUE, the estimate values are shown on the distribution plot axes.
@@ -1104,13 +1150,16 @@ topicsPlot <- function(
     seed = 42,
     scatter_legend_dot_size = c(3,8),
     scatter_legend_bg_dot_size = c(1,3),
-    scatter_legend_dots_alpha = 0.8, 
+    scatter_legend_dots_alpha = 0.8,
     scatter_legend_bg_dots_alpha = 0.2,
     scatter_legend_n = c(1,1,1,1,0,1,1,1,1),
     scatter_legend_method = c("mean"),
     scatter_legend_specified_topics = NULL,
     scatter_legend_topic_n = FALSE,
     scatter_show_axis_values = TRUE,
+    scatter_legend_circles = FALSE,
+    scatter_legend_circles_radius = 0,
+    scatter_legend_circles_num = 4,
     grid_legend_title = "legend_title",
     grid_legend_title_size = 5,
     grid_legend_title_color = 'black',
@@ -1260,8 +1309,8 @@ topicsPlot <- function(
   if(!is.null(ngrams) & !is.null(ngrams_max)){
     
     if(is.null(test)){
-      if (!ngram_select %in% c("pmi", "frequency", "proportion")){
-        stop("ngram_select incorrect -- can only select pmi, frequency, or proportion when not including a test.")
+      if (!ngram_select %in% c("pmi", "frequency", "prevalence")){
+        stop("ngram_select incorrect -- can only select pmi, frequency, or prevalence when not including a test.")
       }
       
       ngrams$ngrams <- ngrams$ngrams %>% 
@@ -1270,8 +1319,8 @@ topicsPlot <- function(
             dplyr::desc(pmi)
           } else if (ngram_select == "frequency") {
             dplyr::desc(freq)
-          } else if (ngram_select == "proportion") {
-            dplyr::desc(prop)
+          } else if (ngram_select == "prevalence") {
+            dplyr::desc(prevalence)
           } else {
             stop("Invalid value for ngram_select")
           }
@@ -1377,6 +1426,9 @@ topicsPlot <- function(
       scatter_legend_dots_alpha = scatter_legend_dots_alpha, 
       scatter_legend_bg_dots_alpha = scatter_legend_bg_dots_alpha,
       scatter_show_axis_values = scatter_show_axis_values,
+      scatter_legend_circles = scatter_legend_circles,
+      scatter_legend_circles_radius = scatter_legend_circles_radius,
+      scatter_legend_circles_num = scatter_legend_circles_num,
       save_dir = save_dir,
       figure_format = figure_format,
       width = 15,
@@ -1391,7 +1443,6 @@ topicsPlot <- function(
   if (!is.null(model) & !is.null(test)){
     
     if (dim == 1){
-      #i=1
       plot_list <- list()
       plot_list <- vector("list", length = 3)
       names(plot_list) <- paste0("square", 1:3)
@@ -1489,8 +1540,6 @@ topicsPlot <- function(
     
     plot_list[["legend"]] <- legend
     plot_list[["distribution"]] <- popout1$legend
-    msg <- "The grid plot legends are saved in the save_dir."
-    message(colourise(msg, "green"))
   }
   return(plot_list)
 }

@@ -24,7 +24,6 @@ topic_test <- function(
     multiple_comparison
 ) {
   
-  
   # Format Checker
   if (!tibble::is_tibble(topics_loadings)) {
     stop("Parameter `topics_loadings` must be a tibble.")
@@ -116,53 +115,117 @@ topic_test <- function(
         formula <- stats::as.formula(paste0(target_name, "~", topic, formula_tail))
         
         message(colourise(
-            paste0(i, ": fitting model formula: ", 
-                   paste(deparse(formula), collapse = " "), "\n"), 
-            "green"))
-          
+          paste0(i, ": fitting model formula: ", 
+                 paste(deparse(formula), collapse = " "), "\n"), 
+          "green"))
+        
+        # Extract variables used in the formula
+        vars_needed <- all.vars(formula)
+        
+        # Check if there are complete cases
+        n_complete <- sum(complete.cases(regression_data[vars_needed]))
+        
+        if (n_complete == 0) {
+          warning(paste0("Skipping model for ", topic, ": no complete cases."))
+          multi_models[[i]] <- NA  # or list(formula = formula, model = NA)
+          next
+        }
+        
+        # Fit the model
         if (test_method == "linear_regression") {
           multi_models[[i]] <- stats::lm(formula, data = regression_data)
         }
+        
         if (test_method == "logistic_regression") {
-          multi_models[[topic]] <- stats::glm(formula, family = binomial, data = regression_data)
+          multi_models[[i]] <- stats::glm(formula, family = binomial, data = regression_data)
         }
       }
     }
-    
     #### Extract statistics from models ####
     summary_statistics <- list()
     
+ #   for (i in seq_along(multi_models)) {
+ #     
+ #     model_summary <- summary(multi_models[[i]])$coefficients
+ #     
+ #     if (test_method == "linear_regression") {
+ #       
+ #       estimate_values <- model_summary[, "Estimate"][z_lda_topics[i]][[1]]
+ #       t_values <- model_summary[, "t value"][z_lda_topics[i]][[1]]
+ #       p_values <- model_summary[, "Pr(>|t|)"][z_lda_topics[i]][[1]]
+ #       
+ #     } else if (test_method == "logistic_regression") {
+ #       
+ #       estimate_values <- model_summary[, "Estimate"][z_lda_topics[i]][[1]]
+ #       t_values <- model_summary[, "z value"][z_lda_topics[i]][[1]]
+ #       p_values <- model_summary[, "Pr(>|z|)"][z_lda_topics[i]][[1]]
+ #       
+ #     }
+ #     res <- tibble::tibble(
+ #       estimate_values = estimate_values,
+ #       t_values = t_values,
+ #       p_values = p_values 
+ #     )
+ #     
+ #     colnames(res) <- c(
+ #       paste0(target_name, ".estimate_beta"),
+ #       if(test_method == "linear_regression") paste0(target_name, ".t"),
+ #       if(test_method == "logistic_regression") paste0(target_name, ".z"), 
+ #       paste0(target_name, ".p")
+ #     )
+ #     summary_statistics[[i]] <- res
+ #   }
+    
     for (i in seq_along(multi_models)) {
       
-      model_summary <- summary(multi_models[[i]])$coefficients
+      model_i <- multi_models[[i]]
+      
+      # Skip if model is NA
+      if (is.na(model_i)[1]) {
+        summary_statistics[[i]] <- tibble::tibble(
+          estimate = NA_real_,
+          stat = NA_real_,
+          p_value = NA_real_
+        )
+        colnames(summary_statistics[[i]]) <- c(
+          paste0(target_name, ".estimate_beta"),
+          if (test_method == "linear_regression") paste0(target_name, ".t"),
+          if (test_method == "logistic_regression") paste0(target_name, ".z"),
+          paste0(target_name, ".p")
+        )
+        next
+      }
+      
+      # Otherwise extract summary
+      model_summary <- summary(model_i)$coefficients
       
       if (test_method == "linear_regression") {
-        
         estimate_values <- model_summary[, "Estimate"][z_lda_topics[i]][[1]]
-        t_values <- model_summary[, "t value"][z_lda_topics[i]][[1]]
+        stat_values <- model_summary[, "t value"][z_lda_topics[i]][[1]]
         p_values <- model_summary[, "Pr(>|t|)"][z_lda_topics[i]][[1]]
-        
       } else if (test_method == "logistic_regression") {
-        
         estimate_values <- model_summary[, "Estimate"][z_lda_topics[i]][[1]]
-        t_values <- model_summary[, "z value"][z_lda_topics[i]][[1]]
+        stat_values <- model_summary[, "z value"][z_lda_topics[i]][[1]]
         p_values <- model_summary[, "Pr(>|z|)"][z_lda_topics[i]][[1]]
-        
       }
+      
       res <- tibble::tibble(
         estimate_values = estimate_values,
-        t_values = t_values,
-        p_values = p_values 
+        stat_values = stat_values,
+        p_values = p_values
       )
       
       colnames(res) <- c(
         paste0(target_name, ".estimate_beta"),
-        if(test_method == "linear_regression") paste0(target_name, ".t"),
-        if(test_method == "logistic_regression") paste0(target_name, ".z"), 
+        if (test_method == "linear_regression") paste0(target_name, ".t"),
+        if (test_method == "logistic_regression") paste0(target_name, ".z"),
         paste0(target_name, ".p")
       )
+      
       summary_statistics[[i]] <- res
     }
+    
+    
     summary_statistics <- dplyr::bind_rows(summary_statistics)
   
     ### Adjust p-value here
@@ -198,6 +261,7 @@ topic_test <- function(
 # @param p_alpha (numeric) Threshold of p value set by the user for visualising significant topics 
 #' @param p_adjust_method (character) Method to adjust/correct p-values for multiple comparisons
 #' (default = "fdr"; see also "holm", "hochberg", "hommel", "bonferroni", "BH", "BY",  "none").
+#' @param complete_cases If TRUE, it will only use complete cases for x_variable, y_variable, controls, and preds.
 #' @param seed (integer) The seed to set for reproducibility
 #' @return A list of the test results, test method, and prediction variable.
 #' @examples
@@ -238,47 +302,50 @@ topicsTest <- function(
     controls = c(),
     test_method = "default",
     p_adjust_method = "fdr",
+    complete_cases = FALSE,
     seed = 42){
   
   
   ##### Getting complete.cases #####
-  
-#  # Select relevant columns from data
-#  relevant_columns <- c(x_variable, y_variable, controls)
-#  
-#  # Ensure relevant columns exist in data
-#  if (!all(relevant_columns %in% colnames(data))) {
-#    stop("One or more relevant columns are missing in the data.")
-#  }
-#  
-#  # Create a subset with relevant columns
-#  data_subset <- data %>% dplyr::select(all_of(relevant_columns))
-#  
-#  # Merge preds with the data subset
-#  merged_data <- dplyr::bind_cols(preds, data_subset)
-#  
-#  # Check initial number of rows
-#  initial_rows <- nrow(merged_data)
-#  
-#  # Remove rows with any NA values
-#  cleaned_data <- merged_data[complete.cases(merged_data), ]
-#  
-#  # Check number of rows after removing NAs
-#  final_rows <- nrow(cleaned_data)
-#  
-#  # Compare and report the number of rows
-#  message(sprintf("Rows before NA removal: %d", initial_rows))
-#  message(sprintf("Rows after NA removal: %d", final_rows))
-#  
-#  # Optionally stop if too many rows are removed
-#  if (final_rows == 0) {
-#    stop("All rows have been removed due to missing values. Check your data for NAs.")
-#  }
-#  
-#  # Update preds and data for subsequent analysis
-#  preds <- cleaned_data %>% dplyr::select(names(preds))
-#  data <- cleaned_data %>% dplyr::select(all_of(relevant_columns))
-#  
+  if(complete_cases){
+    # Select relevant columns from data
+    relevant_columns <- c(x_variable, y_variable, controls)
+    
+    # Ensure relevant columns exist in data
+    if (!all(relevant_columns %in% colnames(data))) {
+      stop("One or more relevant columns are missing in the data.")
+    }
+    
+    # Create a subset with relevant columns
+    data_subset <- data %>% dplyr::select(all_of(relevant_columns))
+    
+    # Merge preds with the data subset
+    merged_data <- dplyr::bind_cols(preds, data_subset)
+    
+    # Check initial number of rows
+    initial_rows <- nrow(merged_data)
+    
+    # Remove rows with any NA values
+    cleaned_data <- merged_data[complete.cases(merged_data), ]
+    
+    # Check number of rows after removing NAs
+    final_rows <- nrow(cleaned_data)
+    
+    # Compare and report the number of rows
+    message(sprintf("Rows before NA removal: %d", initial_rows))
+    message(sprintf("Rows after NA removal: %d", final_rows))
+    
+    # Optionally stop if too many rows are removed
+    if (final_rows == 0) {
+      stop("All rows have been removed due to missing values. Check your data for NAs.")
+    }
+    
+    # Update preds and data for subsequent analysis
+    preds <- cleaned_data %>% dplyr::select(names(preds))
+    data <- cleaned_data %>% dplyr::select(all_of(relevant_columns))
+  }
+
+ 
   ###### End of handling NAs ####
   
   if (is.null(x_variable) & is.null(y_variable)){

@@ -33,6 +33,9 @@ topicsPlot(
   scatter_legend_specified_topics = NULL,
   scatter_legend_topic_n = FALSE,
   scatter_show_axis_values = TRUE,
+  scatter_legend_circles = FALSE,
+  scatter_legend_circles_radius = 0,
+  scatter_legend_circles_num = 4,
   grid_legend_title = "legend_title",
   grid_legend_title_size = 5,
   grid_legend_title_color = "black",
@@ -59,7 +62,7 @@ see also "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr").}
 \item{ngrams_max}{(integer) The maximum number of n-grams to plot.}
 
 \item{ngram_select}{(character) Method to select ngrams_max, when using both ngram and test use "prevalence" or "estimate"; 
-if you only use ngrams use "pmi", "frequency", or "proportion".}
+if you only use ngrams use "pmi", "frequency", or "prevalence".}
 
 \item{color_scheme}{(string 'default' or vector) The color scheme.
  
@@ -108,9 +111,7 @@ For 1-dimension plots of topics, it should contain 6 colours (3 gradient pairs),
   
   "lightgray", "#85DB8E")     # quadrant 9 (bottom right corner).}
 
-\item{highlight_topic_words}{(named vector) Words to highlight in topics (e.g., negative words). 
-The values of the vector determine the color: highlight_topic_words = c(not = "#2d00ff", never = "#2d00ff"); note that it needs
-to be hexa codes, so color naming such as "blue" does not work. The default value is NULL.}
+\item{highlight_topic_words}{(str vector) Words to highlight in topics (e.g., negative words). Format: highlight_topic_words = c("not", "never"). The default value is NULL.}
 
 \item{scale_size}{(logical) Whether to scale the size of the words.}
 
@@ -148,12 +149,18 @@ For example: c(1,1,1,1,0,1,1,1,1) result in one dot in each quadrant except for 
 
 \item{scatter_legend_method}{(string) The method to filter topics to be emphasized in the scatter legend; either "mean", "max_x", or "max_y".}
 
-\item{scatter_legend_specified_topics}{(vector) Specify which topic(s) to emphasize in the scatter legend. 
-For example, c("t_1", "t_2"). If set, scatter_legend_method will have no effect.}
+\item{scatter_legend_specified_topics}{(vector) Specify which topic(s) to emphasize in the scatter legend.}
 
 \item{scatter_legend_topic_n}{(boolean) If TRUE, the topic numbers are shown in the scatter legend.}
 
 \item{scatter_show_axis_values}{(boolean) If TRUE, the estimate values are shown on the distribution plot axes.}
+
+\item{scatter_legend_circles}{Plot concentric circles for the scatter legend}
+
+\item{scatter_legend_circles_radius}{Radius of first concentric circle}
+
+\item{scatter_legend_circles_num}{Number of Concentric circles
+For example, c("t_1", "t_2"). If set, scatter_legend_method will have no effect.}
 
 \item{grid_legend_title}{Title of the grid topic plot.}
 

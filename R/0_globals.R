@@ -11,7 +11,7 @@ utils::globalVariables(c(
   
   ".", ".data", "color_categories", "contains_only_five", "fill", "group", "left_join",
   
-  "map_num", "mean_value", "prop", "rename", "topic", "topic_number", "x", "y",
+  "map_num", "mean_value", "prevalence", "rename", "topic", "topic_number", "x", "y",
   
   # generate_scatter_plot
   "geom_text", 
@@ -20,7 +20,7 @@ utils::globalVariables(c(
   "binomial", 
   
   # topicsScatterLegend
-  "contains_only", 
+  "contains_only", "label_content",
   
   # General
   "msg2",
@@ -37,6 +37,7 @@ utils::globalVariables(c(
   "n", "component_prob", "joint_prob", "n_gram_type", "ngrams", "pmi_value", ":=",
   
   # topicsPlot
-  "pmi"
+  "pmi", "color_negative_cor", "color_positive_cor", "estimate", "highlight_topic_words",
+  "p_adjusted"
   
 ))

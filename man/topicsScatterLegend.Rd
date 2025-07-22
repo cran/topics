@@ -2,7 +2,7 @@
 % Please edit documentation in R/4_1_topicsPlot.R
 \name{topicsScatterLegend}
 \alias{topicsScatterLegend}
-\title{Plot a distribution plot}
+\title{Plot a distribution plot (available for the text-package)}
 \usage{
 topicsScatterLegend(
   bivariate_color_codes,
@@ -22,6 +22,9 @@ topicsScatterLegend(
   scatter_bg_dot_size = c(1, 5),
   scatter_legend_dots_alpha = 0.8,
   scatter_legend_bg_dots_alpha = 0.2,
+  scatter_legend_circles = FALSE,
+  scatter_legend_circles_radius = 0,
+  scatter_legend_circles_num = 4,
   width = 10,
   height = 8,
   seed = 42
@@ -66,6 +69,12 @@ Can be a single integer (applies to all categories) or a vector for specific cat
 
 \item{scatter_legend_bg_dots_alpha}{The transparency of the dots}
 
+\item{scatter_legend_circles}{Plot concentric circles for the scatter legend}
+
+\item{scatter_legend_circles_radius}{Radius of first concentric circle}
+
+\item{scatter_legend_circles_num}{Number of Concentric circles}
+
 \item{width}{Width of the saved scatter plot in inches. Default: 10.}
 
 \item{height}{Height of the saved scatter plot in inches. Default: 8.}
@@ -73,5 +82,5 @@ Can be a single integer (applies to all categories) or a vector for specific cat
 \item{seed}{Seed for reproducibility, ensuring consistent plot generation. Default: 42.}
 }
 \description{
-Plot a distribution plot
+Plot a distribution plot (available for the text-package)
 }
